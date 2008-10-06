@@ -1,5 +1,5 @@
-require 'BambooMonitor'
-require 'GnomeNotifier'
+require 'monitor-bamboo'
+require 'gnome-notifier'
 monitor = BambooMonitor.new
 
 properties = {
