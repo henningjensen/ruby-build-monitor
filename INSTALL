@@ -1,0 +1,8 @@
+INSTALL
+-------
+
+Required gems:
+ * hpricot
+
+For gnome notification you will need libnotify
+ * Ubuntu users: sudo apt-get install libnotify-bin
