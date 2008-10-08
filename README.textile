@@ -6,12 +6,12 @@ The idea is to be able to monitor every CI-server with an API for monitoring bui
 
 h2. Current Status
 
-.h3 Features
+h3. Features
 
 * Integration with Atlassian Bamboo (http://www.atlassian.com/software/bamboo/)
 * Simple notification implemented with libnotify on Linux
 
-.h3 TODO
+h3. Todo
 * Research notification solutions on other platforms. 
 * Basic GUI for configuring which builds to monitor. 
 * Support for more CI-servers:
