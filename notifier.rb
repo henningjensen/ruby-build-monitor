@@ -15,23 +15,17 @@ class GnomeNotifier
   end
 
   # Send a gnome notification
-  # [status] array with build info: identifier,buildstate,summary,url
-  def notify(status)
-    message = "<a href=\"" + status[3] + "\">" + status[2] + "</a>"
-    if status[1] =~ /Success/ 
-      if @last_notification != SUCCESS 
-        @last_notification = SUCCESS
-        title = "Build success: #{status[0]}"
-        notify_send SUCCESS_ICON, title, message
-      end
-    elsif status[1] =~ /Failed/
-      @last_notification = FAILURE
-      title = "Build failure: #{status[0]}"
-      notify_send FAILURE_ICON, title, message
+	# Expects a Build object
+  def notify(build)
+    if build.is(Status::SUCCESS) 
+      title = "Build successful"
+      notify_send SUCCESS_ICON, title, build.message
+    elsif build.is(Status::FAILURE)
+      title = "Build failed"
+      notify_send FAILURE_ICON, title, build.message
     else
-      @last_notification = UNKNOWN
-      title = title + " unknown build state"
-      notify_send WARNING_ICON, title, message
+      title = "Build result uknown" 
+      notify_send WARNING_ICON, title, build.message
     end
   end
 
