@@ -1,6 +1,6 @@
 class GnomeNotifier
   # Time notification will be displayed before disappearing automatically
-  EXPIRATION_IN_SECONDS = 2
+  EXPIRATION_IN_SECONDS = 5 
   # GTK standard icons
   SUCCESS_ICON = "gtk-dialog-info"
   FAILURE_ICON = "gtk-dialog-error"
