@@ -1,59 +1,62 @@
 require 'rubygems'
 require 'hpricot'
 require 'open-uri'
+
 require 'build'
+require 'notifier'
 
 class BambooMonitor 
-  attr_accessor :debug
-  def initialize(properties)
-		@debug=true
-    @properties = properties
+  def initialize(hostname, project_key, username=nil, password=nil)
+		@notifier = Notifier.new
+		configure(hostname, project_key, username, password)
   end
-  
-  def properties
-    ["hostname","username","password","projectKey"] 
-  end
+	
+	def configure(hostname, project_key, username=nil, password=nil)
+		@hostname = hostname
 
-  def print_config
-    @properties.keys.each do |p|
-      puts p + "=>" + @properties[p]
-      end
-  end
-
-	def get_build_status()
-		authenticate() if @auth.nil?
-    xmldoc = parse_xml("getLatestBuildResults.action?auth=" + @auth + "&buildKey=" + @properties["projectKey"])
-		parse_build_status(xmldoc)
+		@base_url = hostname + "/api/rest/"
+		@build_url = @base_url + "getLatestBuildResults.action?buildKey=" + project_key
+		if (username && password)
+			@auth_url =  @base_url + "login.action?username=" + username + "&password=" + password 
+		end
 	end
 
-	def parse_build_status(xmldoc)
-		build_state = xmldoc.at("buildstate").inner_html
-		status = nil
-		summary = nil
-		if build_state =~ /Success/ 
-			status = Status::SUCCESS
-			summary = parse_summary_success(xmldoc)
-    elsif build_state =~ /Fail/
-			status = Status::FAILURE
-			summary = parse_summary_failure(xmldoc)
-    else
-      status = Status::UNKNOWN
-			summary = parse_summary_unknown(xmldoc)
+	def get_build_status()
+		if (@auth_url && @auth_key.nil?)
+			authenticate()
+			@build_url << "&auth=#{@auth_key}"
 		end
-		Build.new(status, summary)
+		xmldoc = parse_xml(@build_url)
+		puts xmldoc
+		notify_build_status(xmldoc)
+	end
+
+	def notify_build_status(xmldoc)
+		build_state = xmldoc.at("buildstate").inner_html
+		build = nil
+		if build_state =~ /Success/ 
+			build = Build.new(Status::SUCCESS, parse_summary_success(xmldoc))
+		elsif build_state =~ /Fail/
+			build = Build.new(Status::FAILURE, parse_summary_failure(xmldoc))
+		else
+		  build = Build.new(Status::UNKNOWN, parse_summary_unknown(xmldoc))
+		end
+		@notifier.notify(build)
 	end
 
 	def parse_project_link(xmldoc)
-		projectname = xmldoc.at("projectname").inner_html
-		projectkey = xmldoc.at("buildkey").inner_html
-		"<a href=\"" + @properties["hostname"] + "/browse/" + projectkey + "/latest" + "\">" + projectname + "</a>"
+		#project_name = xmldoc.at("projectname").inner_html
+		#project_key = xmldoc.at("buildKey").inner_html
+		#"<a href=\"" + @hostname + "/browse/" + project_key + "/latest" + "\">" + project_name + "</a>"
+		xmldoc.at("buildkey").inner_html
 	end
 
 	def parse_summary_success(xmldoc)
 		summary = parse_project_link(xmldoc) 
-		summary << " was successfully built in " << xmldoc.at("builddurationdescription").inner_html 
-		summary << " with " << xmldoc.at("successfultestcount").inner_html << " tests. "
-		summary << "Reason: " << xmldoc.at("buildreason").inner_html << "."
+		summary << " was successfully built with " << xmldoc.at("successfultestcount").inner_html << " tests."
+#		summary << " was successfully built in " << xmldoc.at("builddurationdescription").inner_html 
+#		summary << " with " << xmldoc.at("successfultestcount").inner_html << " tests. "
+#		summary << "Reason: " << xmldoc.at("buildreason").inner_html << "."
 		summary
 	end
 
@@ -71,32 +74,15 @@ class BambooMonitor
 	end
 
   def parse_xml(url)
-    doc = Hpricot(open(@properties["hostname"] + "/api/rest/" + url).read)
-    if @debug
-      puts "---debug---"
-      puts doc
-      puts "---debug---"
-    end
-    doc
+		puts url
+		Hpricot(open(url).read)
   end
 
-  def get_identifiers
-    doc = parse_xml("listBuildNames.action?auth=" + @auth)
-    identifiers = Array.new
-    (doc/"build").each do |e|
-        identifiers << (e/"key").inner_html + "|" + (e/"name").inner_html
-    end
-    identifiers
-  end
-  
   def authenticate
-    doc = parse_xml("login.action?username=" + @properties["username"] + "&password=" + @properties["password"])
+    doc = parse_xml(@auth_url)
     if doc.at("error") 
         raise "Authentication failure: " + doc.at("error").inner_html
     end
-    @auth = doc.at("auth").inner_html
-    if debug
-      puts "auth: " + @auth
-    end
+    @auth_key = doc.at("auth").inner_html
   end
 end
